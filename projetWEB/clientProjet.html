@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <script src="/socket.io/socket.io.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        var socket = io();
+        let couleur = ['red','maroon','olive','green','blue','navy','fuchsia','purple'];
+        let couleurJoueurs=['rouge','violet','bleu','vert'];
+        let tab=[[195,371,1,'maroon'],[495,371,13,'purple'],[495,617,7,'navy'],[195,125,7,'green']];
+        let couleurMale;
+        let couleurFemelle;
+        let nom;
+        let nbJoueurs;
+        let n;
+        let monNum;
+        let listCreatures;
+
+        function entre(){
+            nom=document.getElementById('nom').value;
+            socket.emit('demandeEntre', nom);
+            document.getElementById('nom').disabled=true;
+        }
+        function valider(){
+            socket.emit('choixAdmin', document.getElementById('nbJoueursMax').value);
+            document.getElementById('nbJoueursMax').disabled=true;
+        }
+        function sortie(){
+            socket.emit('demandeSortie',[nom,monNum]);
+            document.getElementById('nom').disabled=false;
+        }
+        window.addEventListener("beforeunload", function (){
+            sortie();
+         });
+
+        socket.on('echec',data=>{
+            document.getElementById('listJoueurs').textContent='echec de connection';
+        });
+        socket.on('connection',data=>{
+            document.getElementById('listJoueurs').textContent="list des Joueurs: "+data.join(",");
+        });
+        socket.on('adminGame',()=>{
+            document.getElementById('nbJoueursMax').hidden=false;
+            document.getElementById('valider').hidden=false;
+            document.getElementById('admin').textContent='vous administrez la partie: choisissez un nombre de joueurs';
+        });
+        socket.on('monNum', data =>{
+            monNum=data;
+        });
+        socket.on('listCreatures',data=>{
+            console.log('client resoit listCreatures',listCreatures);
+            listCreatures=data;
+            afficheCreatures(listCreatures);
+        })
+        socket.on("tour",data=>{
+            //effacer();
+            afficheMap(data[0],data[1]);
+            listCreatures=data[2];
+            afficheCreatures(listCreatures);
+        });
+        socket.on('map', data => {
+            afficheMap(data[0],data[1]);
+            afficheCreatures(listCreatures);
+
+            console.log(data[1]);
+        });
+        socket.on('partieCommence', () => {
+            partieCommence();
+        });
+        socket.on('couleur',data=>{
+            couleurMale=couleur[2*data];
+            couleurFemelle=couleur[2*data+1];
+        })
+
+    </script>
+    <title>Projet</title>
+    <p id="listJoueurs">list de joueurs: </p>
+    <p id="admin"></p>
+</head>
+
+
+<body>
+    <input type="text" id="nom"></input>
+    <input type="number" id="nbJoueursMax" min="1" max="4" hidden="true">
+    <button onclick="entre()" id="seConnecter">se connecter</button>
+    <button onclick="sortie()" id="deconnection">deconnection</button>
+    <button onclick="valider()" id="valider"hidden="true">valider</button>
+    <hr>
+    <label id="couleur"></label>
+    <br/>
+    <label id="label" hidden="true">force</label>
+    <input type="number" id="force" min="1" max="5" hidden="true">
+    <label id="label1" hidden="true">reproduction</label>
+    <input type="number" id="reprod" min="1" max="5" hidden="true">
+    <label id="label2" hidden="true">vision</label>
+    <input type="number" id="vision" min="1" max="5" hidden="true">
+    <button onclick="validerStats()" id="validerStats"hidden="true">valider</button>
+    <button onclick="commencer()" id="commencer"hidden="true">commencer</button>
+    
+    <br>
+    <canvas id="myCanvas" width="1200" height="900"> </canvas>
+
+</body>
+
+
+<script>
+    var canvas=document.getElementById("myCanvas");
+    var ctx=canvas.getContext("2d");
+    ctx.strokeStyle="black";
+    ctx.lineWidth=2;
+    var positionX = 20;
+    var positionY = 100;
+    var a = 25;
+    var b = 16;
+    var long=2*a;
+    var larg=a+b;
+
+    function effacer(){
+        ctx.clearRect(0, 0, ctx.width, ctx.height);
+    }
+    function afficheMap(nbJoueursMax,listCouleurs){
+        for(let i=0;i<13;i++){
+            for(let j=0;j<13;j++){
+                hex(j*long+i*(1/2)*long+20,larg*i+100,listCouleurs[i][j],50);
+            }   
+        }
+        for(let a=0;a<nbJoueursMax;a++){
+            taniere(tab[a]);
+        }
+    }
+    function afficheCreatures(listCreatures){
+        taille=25;
+        for(let i=0;i<listCreatures.length;i++){
+            for(let j=0;j<listCreatures[i].length;j++){
+                console.log(listCreatures[i][j].x);
+                console.log(listCreatures[i][j].y);
+                console.log(listCreatures[i][j].couleur);
+                positionX=listCreatures[i][j].x;
+                positionY=listCreatures[i][j].y;
+                couleur=listCreatures[i][j].couleur;
+                hex(positionX,positionY,couleur,taille);
+            }
+        }
+    }
+    function hex(positionX,positionY,couleur,taille){
+        a=taille/2;
+        b=(taille/10)*3+1;
+        ctx.beginPath();
+        ctx.moveTo(positionX,positionY);
+        ctx.fillStyle=couleur;
+        positionX+=a;positionY-=b;
+        ctx.lineTo(positionX,positionY);
+        positionX+=a;positionY+=b;
+        ctx.lineTo(positionX,positionY);
+        positionY+=a;
+        ctx.lineTo(positionX,positionY);
+        positionX-=a;positionY+=b;
+        ctx.lineTo(positionX,positionY);
+        positionX-=a;positionY-=b;
+        ctx.lineTo(positionX,positionY);
+        positionY-=a;
+        ctx.lineTo(positionX,positionY);
+        ctx.moveTo(positionX+2*a,positionY);
+        positionX+=2*a;
+        
+        ctx.fill()
+        ctx.stroke();
+        ctx.closePath();
+    }
+    //let tab=[[195,371,1,'maroon'],[495,371,13,'purple'],[495,617,7,'navy'],[195,125,7,'green']];
+    function taniere(caseSelect){
+        tailleTaniere=50;
+        let x=caseSelect[0]-50;
+        x+=caseSelect[2]*25;
+        let y=caseSelect[1]-25;;
+        hex(x,y,caseSelect[3],tailleTaniere);
+    }
+    function commencer(){
+        socket.emit('commencer');
+        console.log(listCreatures);
+        afficheCreatures(listCreatures);
+    }
+    function partieCommence(){
+        console.log(monNum);
+        document.getElementById('couleur').textContent='Vous êtes le joueur: '+couleurJoueurs[monNum-1];
+        document.getElementById('force').hidden=false;
+        document.getElementById('vision').hidden=false;
+        document.getElementById('reprod').hidden=false;
+        document.getElementById('label').hidden=false;
+        document.getElementById('label1').hidden=false;
+        document.getElementById('label2').hidden=false;
+        document.getElementById('validerStats').hidden=false;
+        document.getElementById('commencer').hidden=false;
+        }
+    function validerStats(){
+        socket.emit('stats',[monNum,document.getElementById('force').value,document.getElementById('vision').value,document.getElementById('reprod').value]);
+    }
+</script>
+</html>
