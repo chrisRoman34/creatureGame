@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="https://d3js.org/d3.v6.min.js"></script>
+      <script>
+         var socket = io();
+         let nom;
+         socket.on('entre',data=>{
+            document.getElementById('list').textContent="list des Joueurs: "+data.join(",");
+         })
+         function entre() {
+            nom = document.getElementById('pseudo').value;
+            socket.emit('demandeEntre', nom);
+            document.getElementById('pseudo').disabled=true;
+         }
+         
+
+         function sortie() {
+            socket.emit('demandeSortie',nom);
+            document.getElementById('pseudo').disabled=false;
+         }
+
+         socket.on('echec', data => {
+            console.log('trop de joueurs');
+         });
+
+         socket.on('case',data=> {
+            jouer(data);
+         });
+         socket.on('map',()=> {
+            map();
+         });
+      
+         window.addEventListener("beforeunload", function (){
+            sortie();
+         });
+      </script>
+      
+  </head>
+  <body>
+   <h2>
+      jeu de hex
+      <p id="list">list joueurs: </p>
+   </h2>
+      <input type="text" id="pseudo"></input>
+      
+      <button onclick="entre()">se connecter</button>
+      <button onclick="sortie()" >deconnection</button>
+      <br>
+      <canvas id="myCanvas" width="1200" height="900"> </canvas>
+ </body>
+ <script>
+   var canvas=document.getElementById("myCanvas");
+   var ctx=canvas.getContext("2d");
+   ctx.strokeStyle="black";
+   ctx.lineWidth=2;
+   var positionX = 20;
+   var positionY = 100;
+   var a = 25;
+   var b = 16;
+   function map(){
+      ctx.moveTo(positionX,positionY);
+      for(let i=0;i<14;i++){
+         for(let j=0;j<13;j++){
+            ctx.lineTo(positionX+a,positionY-b);
+            positionX+=a;positionY-=b;
+            ctx.lineTo(positionX+a,positionY+b);
+            positionX+=a;positionY+=b;
+            ctx.lineTo(positionX,positionY+a);
+            positionY+=a;
+            ctx.lineTo(positionX-a,positionY+b);
+            positionX-=a;positionY+=b;
+            ctx.lineTo(positionX-a,positionY-b);
+            positionX-=a;positionY-=b;
+            ctx.lineTo(positionX,positionY-a);
+            positionY-=a;
+            ctx.moveTo(positionX+2*a,positionY);
+            positionX+=2*a;
+            ctx.stroke();
+         }
+         positionX=20+i*a;positionY=100+b*i+a*i;
+         ctx.moveTo(positionX+2*a,positionY);
+   }}
+
+   function jouer(caseSelect){
+      caseSelect[0]-=50;
+      caseSelect[0]+=caseSelect[2]*25;
+      caseSelect[1]-=25;
+      ctx.beginPath();
+      ctx.fillStyle=caseSelect[4];
+      ctx.moveTo(caseSelect[0],caseSelect[1]);
+      ctx.lineTo(caseSelect[0]+a,caseSelect[1]-b);
+      caseSelect[0]+=a;caseSelect[1]-=b;
+      ctx.lineTo(caseSelect[0]+a,caseSelect[1]+b);
+      caseSelect[0]+=a;caseSelect[1]+=b;
+      ctx.lineTo(caseSelect[0],caseSelect[1]+a);
+      caseSelect[1]+=a;
+      ctx.lineTo(caseSelect[0]-a,caseSelect[1]+b);
+      caseSelect[0]-=a;caseSelect[1]+=b;
+      ctx.lineTo(caseSelect[0]-a,caseSelect[1]-b);
+      caseSelect[0]-=a;caseSelect[1]-=b;
+      ctx.lineTo(caseSelect[0],caseSelect[1]-a);
+      caseSelect[1]-=a;
+      ctx.moveTo(positionX+2*a,positionY);
+      ctx.fill();
+      ctx.stroke();
+   }
+   canvas.addEventListener('click', function (event) {
+        var rect = canvas.getBoundingClientRect();
+        var x = event.clientX - rect.left;
+        var y = event.clientY - rect.top;
+        socket.emit("clic",[x,y,nom]);
+   });
+ </script>
+</html>
